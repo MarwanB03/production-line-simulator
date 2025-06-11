@@ -28,6 +28,12 @@ st.markdown("""
         margin: 5px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
+    .info-box {
+        background-color: #e8f4f8;
+        border-radius: 8px;
+        padding: 15px;
+        margin: 10px 0;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -43,30 +49,32 @@ STATIONS_DATA = {
 }
 
 @st.cache_data
-def calculate_takt_time(weekly_production: int) -> float:
-    """Calcule le takt time en minutes."""
-    weekly_minutes = 5 * 8 * 60  # 5 jours, 8 heures, 60 minutes
-    return weekly_minutes / weekly_production
+def calculate_weekly_production(takt_time_hours: float) -> int:
+    """Calcule la production hebdomadaire à partir du takt time en heures."""
+    weekly_hours = 5 * 8  # 5 jours, 8 heures
+    return int(weekly_hours / takt_time_hours)
 
 @st.cache_data
-def calculate_operators_needed(station_time: float, takt_time: float) -> int:
+def calculate_operators_needed(station_time: float, takt_time_hours: float) -> int:
     """Calcule le nombre d'opérateurs nécessaires pour une station."""
-    return max(1, int(np.ceil(station_time / takt_time)))
+    takt_time_minutes = takt_time_hours * 60
+    return max(1, int(np.ceil(station_time / takt_time_minutes)))
 
 @st.cache_data
-def calculate_station_load(station_time: float, takt_time: float, operators: int) -> float:
+def calculate_station_load(station_time: float, takt_time_hours: float, operators: int) -> float:
     """Calcule la charge d'une station en pourcentage."""
-    return (station_time / (takt_time * operators)) * 100
+    takt_time_minutes = takt_time_hours * 60
+    return (station_time / (takt_time_minutes * operators)) * 100
 
 @st.cache_data
-def merge_stations(stations: Dict[str, Dict[str, float]], takt_time: float) -> Dict[str, Dict[str, float]]:
+def merge_stations(stations: Dict[str, Dict[str, float]], takt_time_hours: float) -> Dict[str, Dict[str, float]]:
     """Fusionne les stations selon les critères définis."""
     merged_stations = stations.copy()
     to_merge = []
     
     # Identifier les stations à fusionner
     for station_name, posts in stations.items():
-        total_load = sum(posts.values()) / takt_time
+        total_load = sum(posts.values()) / (takt_time_hours * 60)
         if total_load < 0.6 or len(posts) < 2:
             to_merge.append(station_name)
     
@@ -88,17 +96,54 @@ def main():
     try:
         st.title("🏭 Simulation Ligne de Production")
         
-        # Saisie de la production hebdomadaire
-        weekly_production = st.number_input(
-            "Production hebdomadaire (robots/semaine)",
-            min_value=1,
-            value=85,
-            step=1
-        )
+        # Création de deux colonnes pour les entrées
+        col1, col2 = st.columns(2)
         
-        # Calcul du takt time
-        takt_time = calculate_takt_time(weekly_production)
-        st.info(f"Takt Time: {takt_time:.2f} minutes")
+        with col1:
+            # Saisie du takt time avec un curseur
+            takt_time = st.slider(
+                "Takt Time (heures)",
+                min_value=0.2,
+                max_value=0.6,
+                value=0.47,  # Valeur par défaut (environ 85 robots/semaine)
+                step=0.01,
+                help="Temps disponible entre chaque unité produite (en heures)"
+            )
+            
+            # Affichage du takt time en format détaillé
+            st.markdown(f"""
+                <div class="info-box">
+                    <p>Takt Time détaillé :</p>
+                    <ul>
+                        <li>{takt_time:.2f} heures</li>
+                        <li>{takt_time*60:.1f} minutes</li>
+                        <li>{takt_time*3600:.0f} secondes</li>
+                    </ul>
+                </div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            # Affichage de la production hebdomadaire calculée
+            weekly_production = calculate_weekly_production(takt_time)
+            st.metric(
+                "Production hebdomadaire calculée",
+                f"{weekly_production} robots/semaine",
+                help="Calculé à partir du takt time : (5 jours × 8 heures) ÷ takt time"
+            )
+        
+        # Explication du calcul de la charge
+        st.markdown("""
+            <div class="info-box">
+                <h4>📊 Comment est calculée la charge ?</h4>
+                <p>La charge d'un poste est calculée comme suit :</p>
+                <ul>
+                    <li>Charge (%) = (Temps du poste ÷ (Takt Time × Nombre d'opérateurs)) × 100</li>
+                    <li>Si la charge > 100% : le poste est surchargé</li>
+                    <li>Si la charge < 60% : le poste est sous-chargé</li>
+                </ul>
+                <p>Le nombre d'opérateurs est calculé pour maintenir la charge sous 100%.</p>
+            </div>
+        """, unsafe_allow_html=True)
         
         # Fusion des stations si nécessaire
         merged_stations = merge_stations(STATIONS_DATA, takt_time)
@@ -113,12 +158,15 @@ def main():
                     operators = calculate_operators_needed(time, takt_time)
                     load = calculate_station_load(time, takt_time, operators)
                     
+                    # Déterminer la couleur en fonction de la charge
+                    load_color = "red" if load > 100 else "green" if load < 60 else "orange"
+                    
                     st.markdown(f"""
                         <div class="station-block">
                             <h4>{post_name}</h4>
                             <p>Temps: {time} min</p>
                             <p>Opérateurs: {'👤' * operators}</p>
-                            <p>Charge: {load:.1f}%</p>
+                            <p style="color: {load_color};">Charge: {load:.1f}%</p>
                         </div>
                     """, unsafe_allow_html=True)
         
@@ -156,4 +204,4 @@ def main():
         st.stop()
 
 if __name__ == "__main__":
-    main()
+    main() 
