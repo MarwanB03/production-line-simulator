@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import plotly.graph_objects as go
 from typing import Dict, List, Tuple
 
 # Configuration de la page
@@ -43,19 +42,23 @@ STATIONS_DATA = {
     "Chaîne Finale": {"F1": 20}
 }
 
+@st.cache_data
 def calculate_takt_time(weekly_production: int) -> float:
     """Calcule le takt time en minutes."""
     weekly_minutes = 5 * 8 * 60  # 5 jours, 8 heures, 60 minutes
     return weekly_minutes / weekly_production
 
+@st.cache_data
 def calculate_operators_needed(station_time: float, takt_time: float) -> int:
     """Calcule le nombre d'opérateurs nécessaires pour une station."""
     return max(1, int(np.ceil(station_time / takt_time)))
 
+@st.cache_data
 def calculate_station_load(station_time: float, takt_time: float, operators: int) -> float:
     """Calcule la charge d'une station en pourcentage."""
     return (station_time / (takt_time * operators)) * 100
 
+@st.cache_data
 def merge_stations(stations: Dict[str, Dict[str, float]], takt_time: float) -> Dict[str, Dict[str, float]]:
     """Fusionne les stations selon les critères définis."""
     merged_stations = stations.copy()
@@ -82,70 +85,75 @@ def merge_stations(stations: Dict[str, Dict[str, float]], takt_time: float) -> D
     return merged_stations
 
 def main():
-    st.title("🏭 Simulation Ligne de Production")
-    
-    # Saisie de la production hebdomadaire
-    weekly_production = st.number_input(
-        "Production hebdomadaire (robots/semaine)",
-        min_value=1,
-        value=85,
-        step=1
-    )
-    
-    # Calcul du takt time
-    takt_time = calculate_takt_time(weekly_production)
-    st.info(f"Takt Time: {takt_time:.2f} minutes")
-    
-    # Fusion des stations si nécessaire
-    merged_stations = merge_stations(STATIONS_DATA, takt_time)
-    
-    # Affichage des stations
-    for station_name, posts in merged_stations.items():
-        st.subheader(f"Îlot {station_name}")
-        cols = st.columns(len(posts))
+    try:
+        st.title("🏭 Simulation Ligne de Production")
         
-        for col, (post_name, time) in zip(cols, posts.items()):
-            with col:
-                operators = calculate_operators_needed(time, takt_time)
-                load = calculate_station_load(time, takt_time, operators)
-                
-                st.markdown(f"""
-                    <div class="station-block">
-                        <h4>{post_name}</h4>
-                        <p>Temps: {time} min</p>
-                        <p>Opérateurs: {'👤' * operators}</p>
-                        <p>Charge: {load:.1f}%</p>
-                    </div>
-                """, unsafe_allow_html=True)
-    
-    # Tableau de synthèse
-    st.subheader("📊 Tableau de Synthèse")
-    
-    total_operators = sum(
-        sum(calculate_operators_needed(time, takt_time) for time in posts.values())
-        for posts in merged_stations.values()
-    )
-    
-    total_posts = sum(len(posts) for posts in merged_stations.values())
-    
-    summary_data = {
-        "Métrique": [
-            "Îlots actifs",
-            "Îlots fusionnés",
-            "Total postes",
-            "Total opérateurs",
-            "Charge moyenne"
-        ],
-        "Valeur": [
-            len(merged_stations),
-            len(STATIONS_DATA) - len(merged_stations),
-            total_posts,
-            total_operators,
-            f"{sum(calculate_station_load(time, takt_time, calculate_operators_needed(time, takt_time)) for posts in merged_stations.values() for time in posts.values()) / total_posts:.1f}%"
-        ]
-    }
-    
-    st.table(pd.DataFrame(summary_data))
+        # Saisie de la production hebdomadaire
+        weekly_production = st.number_input(
+            "Production hebdomadaire (robots/semaine)",
+            min_value=1,
+            value=85,
+            step=1
+        )
+        
+        # Calcul du takt time
+        takt_time = calculate_takt_time(weekly_production)
+        st.info(f"Takt Time: {takt_time:.2f} minutes")
+        
+        # Fusion des stations si nécessaire
+        merged_stations = merge_stations(STATIONS_DATA, takt_time)
+        
+        # Affichage des stations
+        for station_name, posts in merged_stations.items():
+            st.subheader(f"Îlot {station_name}")
+            cols = st.columns(len(posts))
+            
+            for col, (post_name, time) in zip(cols, posts.items()):
+                with col:
+                    operators = calculate_operators_needed(time, takt_time)
+                    load = calculate_station_load(time, takt_time, operators)
+                    
+                    st.markdown(f"""
+                        <div class="station-block">
+                            <h4>{post_name}</h4>
+                            <p>Temps: {time} min</p>
+                            <p>Opérateurs: {'👤' * operators}</p>
+                            <p>Charge: {load:.1f}%</p>
+                        </div>
+                    """, unsafe_allow_html=True)
+        
+        # Tableau de synthèse
+        st.subheader("📊 Tableau de Synthèse")
+        
+        total_operators = sum(
+            sum(calculate_operators_needed(time, takt_time) for time in posts.values())
+            for posts in merged_stations.values()
+        )
+        
+        total_posts = sum(len(posts) for posts in merged_stations.values())
+        
+        summary_data = {
+            "Métrique": [
+                "Îlots actifs",
+                "Îlots fusionnés",
+                "Total postes",
+                "Total opérateurs",
+                "Charge moyenne"
+            ],
+            "Valeur": [
+                len(merged_stations),
+                len(STATIONS_DATA) - len(merged_stations),
+                total_posts,
+                total_operators,
+                f"{sum(calculate_station_load(time, takt_time, calculate_operators_needed(time, takt_time)) for posts in merged_stations.values() for time in posts.values()) / total_posts:.1f}%"
+            ]
+        }
+        
+        st.table(pd.DataFrame(summary_data))
+        
+    except Exception as e:
+        st.error(f"Une erreur est survenue : {str(e)}")
+        st.stop()
 
 if __name__ == "__main__":
-    main() 
+    main()
