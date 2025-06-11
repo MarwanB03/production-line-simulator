@@ -1,16 +1,42 @@
-# Introduction to GitHub
+# Simulation Ligne de Production
 
-<img src="https://octodex.github.com/images/Professortocat_v2.png" align="right" height="200px" />
+Cette application Streamlit simule une ligne de production industrielle pour la fabrication de robots, permettant de calculer automatiquement les besoins en opérateurs et l'organisation des postes de travail.
 
-Hey @MarwanB03!
+## 🚀 Installation
 
-Mona here. I'm done preparing your exercise. Hope you enjoy! 💚
+1. Clonez ce dépôt
+2. Installez les dépendances :
+```bash
+pip install -r requirements.txt
+```
 
-Remember, it's self-paced so feel free to take a break! ☕️
+## 🎯 Utilisation
 
-[![](https://img.shields.io/badge/Go%20to%20Exercise-%E2%86%92-1f883d?style=for-the-badge&logo=github&labelColor=197935)](https://github.com/MarwanB03/production-line-simulator/issues/1)
+Lancez l'application avec la commande :
+```bash
+streamlit run app.py
+```
 
----
+## 📋 Fonctionnalités
 
-&copy; 2025 GitHub &bull; [Code of Conduct](https://www.contributor-covenant.org/version/2/1/code_of_conduct/code_of_conduct.md) &bull; [MIT License](https://gh.io/mit)
+- Calcul automatique du takt time
+- Simulation de 6 îlots de production + 1 chaîne finale
+- Calcul automatique du nombre d'opérateurs nécessaires
+- Fusion automatique des îlots sous-chargés
+- Affichage visuel de la charge de travail
+- Tableau de synthèse des indicateurs clés
 
+## 🎨 Interface
+
+- Design épuré en mode clair
+- Interface responsive
+- Visualisation claire des postes de travail
+- Indicateurs de charge en temps réel
+
+## 📊 Métriques calculées
+
+- Takt time
+- Nombre d'opérateurs par poste
+- Charge de travail par poste
+- Nombre total d'opérateurs
+- Charge moyenne globale 
